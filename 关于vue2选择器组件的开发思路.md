@@ -255,7 +255,36 @@ export default {
 </style>
 ```
 
-## 通过 provide inject 将选择的行为与具体的视图内容分离
+## 通过 provide inject 将选择容器与具体的列表项内容分离
+
+随着业务的增长，开发人员会遇到越来越多的选择器功能需求，如果对每个选择器自定义组件都要做一次`v-model`的配置显然是不合理的。
+
+为了应对这一问题，可以参考`el-select`的思路将选择容器与具体的列表项内容分离，这样在开发选择器功能时，只需要关注列表项内容的代码开发即可。至于选择器最终的结果值、是否多选、容器的样式等都集中到容器组件中进行开发。
+
+期望的使用案例是这样的：
+
+```vue
+<template>
+  <!-- e.g.1 -->
+  <Selector v-model="selectedValue" custom-class="list">
+    <SelectOption1
+      v-for="item in tableData"
+      :key="item.value"
+      :value="item.value"
+      v-bind="item"
+    ></SelectOption1>
+  </Selector>
+  <!-- e.g.2 -->
+  <Selector v-model="selectedValue2" custom-class="list">
+    <Select-Option2
+      v-for="item in tableData"
+      :key="item.value"
+      :value="item.value"
+      v-bind="item"
+    ></Select-Option2>
+  </Selector>
+</template>
+```
 
 ## 结语
 
