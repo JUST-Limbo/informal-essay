@@ -96,9 +96,9 @@ export default {
 </style>
 ```
 
-这段代码最大的问题是`.item`元素视图层的激活状态依赖于对象数组`tableData`中对象元素的`selected`属性。在业务开发中，`tableData`的数据是通过调接口请求而来，因此很大概率前端拿到的数据中并没有`selected`属性。
+这段代码最大的问题是`.item`元素视图层的激活状态`.active`类依赖于对象数组`tableData`中对象元素的`selected`属性。在业务开发中，`tableData`的数据是通过调接口请求而来，因此很大概率前端拿到的数据中并没有`selected`属性。
 
-在这个案例中，仅仅为了维护视图层的状态就新增一个属性是不合理的，因为有更简洁的应对策略。
+因此这个案例中，仅仅为了维护视图层状态就对源数据随意地新增一个属性是不合理的，因为有更简洁的应对策略。
 
 **可以对案例代码进行以下修改：**
 
@@ -198,7 +198,7 @@ export default {
 
 _AddressSelect.vue_
 
-注意第 8、20-32 行的代码变化
+注意关于`.active`类的处理、`model`配置项的声明和`selectAddress`方法的实现。
 
 ```vue
 <template>
@@ -220,7 +220,7 @@ _AddressSelect.vue_
 <script>
 export default {
   name: "AddressSelect",
-  // 外层传入的v-model="selectedId",selectedId的值在组件内指向prop value
+  // 外层传入的v-model="selectedId",selectedId的值在组件内会指向prop value
   model: {
     prop: "value",
     event: "select",
@@ -231,7 +231,7 @@ export default {
   },
   methods: {
     selectAddress(item) {
-      // 执行这段代码,将会修改外层的selectedId,值为传入的item.id
+      // 执行这行代码,将会修改外层的selectedId,值为传入的item.id
       this.$emit("select", item.id);
     },
   },
@@ -257,33 +257,273 @@ export default {
 
 ## 通过 provide inject 将选择容器与具体的列表项内容分离
 
-随着业务的增长，开发人员会遇到越来越多的选择器功能需求，如果对每个选择器自定义组件都要做一次`v-model`的配置显然是不合理的。
+随着业务的增长，开发人员会遇到越来越多的选择器功能需求，不可避免的会出现以下问题：
 
-为了应对这一问题，可以参考`el-select`的思路**将选择容器与具体的列表项内容分离**，这样在开发选择器功能时，**只需要关注列表项内容的代码开发即可**。至于选择器最终的结果值、是否多选、容器的样式等都集中到容器组件中进行开发。
+1. 每个选择器自定义组件都要重复写一次支持自定义`v-model`的配置是不合理的
+2. 如果一个选择器支持单选和多选，则每次开发组件都要重复实现一次选择的逻辑是不合理的
+3. 如果选择器列表项内容相同，但是在不同场景下布局不同（列表的布局可能是横向/纵向排列，弹出层等），则需要根据场景做不同的处理，长期的场景堆积会造成组件难以维护
 
-期望的使用案例是这样的：
+为了应对以上问题，可以参考`el-select`的思路，**将选择器的容器与具体的列表项内容分离**，即：
+
+给出一个专门容纳列表项内容的**容器组件**`Selector`，其作用是保存最终的选择结果、承载单选多选场景，同时暴露出一个`customClass`属性来从`Selector`容器外对列表布局进行控制。
+
+这样在开发选择器功能时，**只需要关注列表项内容组件的代码开发即可**。
+
+
+
+下面给出简明代码（不完善，仅作为描述思路）：
+
+_index.vue_
+
+注意`Selector`和`SelectOption`两个组件的层级
 
 ```vue
 <template>
-  <!-- e.g.1 -->
-  <Selector v-model="selectedValue" custom-class="list">
-    <SelectOption1
-      v-for="item in tableData"
-      :key="item.value"
-      :value="item.value"
-      v-bind="item"
-    ></SelectOption1>
-  </Selector>
-  <!-- e.g.2 -->
-  <Selector v-model="selectedValue2" custom-class="list">
-    <SelectOption2
-      v-for="item in tableData"
-      :key="item.value"
-      :value="item.value"
-      v-bind="item"
-    ></SelectOption2>
-  </Selector>
+  <div>
+    <!-- e.g.1 -->
+    <div>{{ selectedValue }}</div>
+    <Selector v-model="selectedValue" custom-class="horizontal-list">
+      <SelectOption1
+        v-for="item in tableData"
+        :key="item.id"
+        :value="item.id"
+        v-bind="item"
+      ></SelectOption1>
+    </Selector>
+    <!-- e.g.2 -->
+    <div>{{ selectedValue2 }}</div>
+    <Selector v-model="selectedValue2" multiple custom-class="vertical-list">
+      <SelectOption2
+        v-for="item in tableData"
+        :key="item.id"
+        :value="item.id"
+        v-bind="item"
+      ></SelectOption2>
+    </Selector>
+  </div>
 </template>
+
+<script>
+import Selector from "./Selector.vue";
+import SelectOption1 from "./SelectOption1.vue";
+import SelectOption2 from "./SelectOption2.vue";
+
+export default {
+  components: {
+    Selector,
+    SelectOption1,
+    SelectOption2,
+  },
+  data() {
+    return {
+      selectedValue: "",
+      selectedValue2: "",
+      tableData: [
+        {
+          id: 1,
+          date: "2016-05-02",
+          name: "王小虎",
+          address: "上海市普陀区金沙江路 1518 弄",
+        },
+        {
+          id: 2,
+          date: "2016-05-04",
+          name: "王小虎",
+          address: "上海市普陀区金沙江路 1517 弄",
+        },
+        {
+          id: 3,
+          date: "2016-05-01",
+          name: "王小虎",
+          address: "上海市普陀区金沙江路 1519 弄",
+        },
+      ],
+    };
+  },
+};
+</script>
+
+<style lang="scss">
+.horizontal-list {
+  display: flex;
+}
+.vertical-list {
+}
+</style>
+```
+
+_Selector.vue_
+
+注意`onOptionSelect`
+
+```vue
+<template>
+  <div :class="[customClass]">
+    <slot></slot>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "Selector",
+  inheritAttrs: false,
+  props: {
+    value: {
+      required: true,
+    },
+    multiple: Boolean,
+    customClass: String,
+  },
+  provide() {
+    return {
+      $Selector: this,
+    };
+  },
+  created() {
+    if (this.multiple && !Array.isArray(this.value)) {
+      this.$emit("input", []);
+    }
+    if (!this.multiple && Array.isArray(this.value)) {
+      this.$emit("input", "");
+    }
+  },
+  methods: {
+    onOptionSelect(option) {
+      if (this.multiple) {
+        const targetIndex = this.value.indexOf(option.value);
+        const valueClone = this.value.slice();
+        if (targetIndex > -1) {
+          valueClone.splice(targetIndex, 1);
+        } else {
+          valueClone.push(option.value);
+        }
+        this.$emit("input", valueClone);
+      } else {
+        this.$emit("input", option.value);
+      }
+    },
+    calcItemActive(itemValue) {
+      if (this.multiple) {
+        return this.value.includes(itemValue);
+      } else {
+        return this.value == itemValue;
+      }
+    },
+  },
+};
+</script>
+```
+
+_SelectOption1.vue_
+
+注意`active`计算属性
+
+```vue
+<template>
+  <div class="item" @click="selectAddress" :class="{ active }">
+    <div>{{ date }}</div>
+    <div>{{ name }}</div>
+    <div>{{ address }}</div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "SelectOption1",
+  inheritAttrs: false,
+  inject: ["$Selector"],
+  model: {
+    prop: "value",
+    event: "select",
+  },
+  props: {
+    value: [String, Number],
+    data: Array,
+    date: {},
+    name: {},
+    address: {},
+  },
+  computed: {
+    active() {
+      return this.$Selector.calcItemActive(this.value);
+    },
+  },
+  methods: {
+    selectAddress() {
+      this.$Selector.onOptionSelect({ value: this.value });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.item {
+  border: 1px dashed #d9d9d9;
+  border-radius: 2px;
+  width: 178px;
+  height: 178px;
+  border-radius: 6px;
+  margin-left: 6px;
+  &.active {
+    background-color: #409eff;
+  }
+}
+</style>
+```
+
+_SelectOption2.vue_
+
+大部分代码同`SelectOption1.vue`，样式略有不同
+
+```vue
+<template>
+  <div class="item" @click="selectAddress" :class="{ active }">
+    <div>{{ date }}</div>
+    <div>{{ name }}</div>
+    <div>{{ address }}</div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "SelectOption2",
+  inheritAttrs: false,
+  inject: ["$Selector"],
+  model: {
+    prop: "value",
+    event: "select",
+  },
+  props: {
+    value: [String, Number],
+    data: Array,
+    date: {},
+    name: {},
+    address: {},
+  },
+  computed: {
+    active() {
+      return this.$Selector.calcItemActive(this.value);
+    },
+  },
+  methods: {
+    selectAddress() {
+      this.$Selector.onOptionSelect({ value: this.value });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.item {
+  border: 1px dashed #d9d9d9;
+  border-radius: 2px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  &.active {
+    background-color: #409eff;
+  }
+}
+</style>
 ```
 
 ## 结语
@@ -292,6 +532,12 @@ export default {
 
 > 本着**不抱怨，想办法**的原则写下这篇文章，希望看完以后少生产点文章开头案例中的低质代码，尽量避免给后续接手维护代码的开发人员造成困扰。
 
-## 相关链接
+## 参考资料链接
+
+（待补充）
+
+
+
+
 
 **return 0;**
