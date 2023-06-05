@@ -286,12 +286,19 @@ export default {
 </template>
 ```
 
+## 版本差异
+
+在`vue@'<2.6'`的版本中，`v-model`与`v-bind="$attrs" v-on="$listeners"`的写法会导致`value`属性丢失。
+
+详见：
+
+1. [Should v-model work on components using both v-bind="$attrs" and v-on="$listeners"? · Issue #6216 · vuejs/vue (github.com)](https://github.com/vuejs/vue/issues/6216)
+2. [v-model's value not in $attrs if value not defined as a prop · Issue #9330 · vuejs/vue (github.com)](https://github.com/vuejs/vue/issues/9330)
+3. [Allow v-bind="$attrs" with v-on="$listeners" to work with v-model by chrisvfritz · Pull Request #6327 · vuejs/vue (github.com)](https://github.com/vuejs/vue/pull/6327)
+4. [$attrs 与 v-model结合使用value未被接收问题 · Issue #6 · bienvenidoY/blog (github.com)](https://github.com/bienvenidoY/blog/issues/6)
+
 ## 结语
 
 综上所述，在开发过程中，应该尽量避免松散地将选择器功能实现在页面这一层代码中。从代码可读性和可维护性的角度来讲， 此类不直接影响业务的纯功能性代码都应该集中到一个组件里，同时暴露出`v-model`实现与父级组件数据双向通讯。
 
-> 本着**不抱怨，想办法**的原则写下这篇文章，希望看完以后少生产点文章开头案例中的低质代码，尽量避免给后续接手维护代码的开发人员造成困扰。
-
 ## 相关链接
-
-**return 0;**
