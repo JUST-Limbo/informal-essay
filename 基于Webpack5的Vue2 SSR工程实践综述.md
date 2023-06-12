@@ -863,7 +863,7 @@ new HtmlWebpackPlugin({
 
 ### 环境变量
 
-`NODE_ENV`在`webpack.config.js`中用于分区打包模式，可以用来配置`mode`配置项（只支持`'none' | 'development' | 'production'`），可以通过命令指定具体的值：
+`NODE_ENV`在`webpack.config.js`中用于区分打包模式，可以用来配置`mode`配置项（只支持`'none' | 'development' | 'production'`），可以通过命令指定具体的值：
 
 ```shell
 cross-env NODE_ENV=production
