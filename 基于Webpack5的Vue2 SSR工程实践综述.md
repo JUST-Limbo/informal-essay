@@ -882,12 +882,220 @@ webpack --node-env production --env APP_ENV=production
 ```
 
 ```js
+// wepback plugins
 new Dotenv({
     path: `./envVariable/client/.env.${APP_ENV}`,
 })
 ```
 
 总的来说就是`NODE_ENV`决定了构建方式（`development|production`）涉及到代码压缩等内容，`APP_ENV`决定了业务代码用哪套环境变量（`dev|test|stag|uat|pre|prod`）。
+
+### 数据预取阶段的鉴权问题（Cookie）
+
+场景：浏览器访问`http://localhost:9500/user`，若用户已登录则`/user`页面展示当前用户个人信息，如果未登录则重定向到`/login`
+
+思考一个问题：在数据预取阶段（`Data Pre-Fetching `），`server`端向后端服务器发起的异步请求是否自动携带了浏览器传过来的`cookie`？
+
+答案：没有自动携带。
+
+为了处理这种问题，我们需要：
+
+1. `server`端收到浏览器的访问请求，将`req`对象中的`cookie`保存
+2. 将`cookie`传入到`store`中
+3. 在`store.dispatch`时将`cookie`传递给`axios`实例
+
+下面给出简明代码（仅做描述思路）：
+
+```js
+// server.js
+const express = require('express')
+const app = express()
+...
+server.get('*', (req, res) => {
+  const context = {
+  	...,
+    // 配置context.cookie
+		cookie: req.headers.cookie
+	}
+	renderer.renderToString(context, (err, html) => {
+    ...
+	})
+})
+
+```
+
+```js
+// entry-server.js
+import { createApp } from './app';
+// 此处形参context就是renderer.renderToString传入的context实参
+export default (context) => {
+  return new Promise((resolve,reject) => {
+    const { app, router, store } = createApp();
+    // 保存cookie到store里
+    if (context.cookie) {
+      store.commit('cookieStore/save_cookie', context.cookie);
+    }
+  })
+}
+
+```
+
+```js
+// modules/cookieStore.js
+export default {
+	namespaced: true,
+	state: () => ({
+		cookie: ""
+	}),
+	mutations: {
+		save_cookie(state, cookie) {
+			state.cookie = cookie || ""
+		}
+	}
+}
+// store.js
+import cookieStore from "./modules/cookie"
+export function createStore() {
+	return new Vuex.Store({
+		state: {},
+		getters: {
+			cookie(state) {
+				return state.cookieStore.cookie
+			}
+		},
+		modules: {
+			cookieStore
+		}
+	})
+}
+
+```
+
+```vue
+// vue
+<template>
+	<div>
+		<div>userInfo</div>
+		<div>name:{{ userInfo.name }}</div>
+		<div>age:{{ userInfo.age }}</div>
+		<div>gender:{{ userInfo.gender }}</div>
+	</div>
+</template>
+
+<script>
+import { createNamespacedHelpers } from "vuex"
+const { mapState } = createNamespacedHelpers("userStore")
+
+export default {
+	name: "User",
+	asyncData({ store }) {
+		return store.dispatch("userStore/getUserInfo")
+	},
+	computed: {
+		...mapState(["userInfo"])
+	}
+}
+</script>
+
+```
+
+```js
+// userStore.js
+import { getUserInfo } from "@/api/user.js"
+
+export default {
+	namespaced: true,
+	state: () => ({
+		userInfo: {}
+	}),
+	getters: {},
+	mutations: {
+		setUserInfo(state, userInfo) {
+			state.userInfo = userInfo
+		}
+	},
+	actions: {
+		getUserInfo({ rootGetters, commit }) {
+			return getUserInfo({
+				cookie: rootGetters.cookie
+			})
+				.then((res) => {
+					commit("setUserInfo", res.data)
+				})
+		}
+	}
+}
+
+```
+
+预取阶段，`asyncData`执行`store.dispatch("userStore/getUserInfo")`，会在`actions`中向`api`函数传入`cookie`，通过这样处理，我们就能实现预取阶段发起的异步请求也携带了鉴权信息。
+
+#### 注意
+
+在查阅和参考资料的过程中发现，很多方案是将`cookie`作为实参传入到`asyncData`中，即：
+
+```js
+// entry-server.js
+Promise.all(
+  matchedComponents.map((Component) => {
+    if (Component.asyncData) {
+      return Component.asyncData({
+        store,
+        route: router.currentRoute,
+        // 注意此处cookie实参
+        cookie: context.cookie
+      });
+    }
+  })
+)
+
+```
+
+```vue
+// vue
+<script>
+import { createNamespacedHelpers } from "vuex"
+const { mapState } = createNamespacedHelpers("userStore")
+
+export default {
+	name: "User",
+	asyncData({ store,cookie }) {
+		return store.dispatch("userStore/getUserInfo",cookie)
+	},
+	computed: {
+		...mapState(["userInfo"])
+	}
+}
+</script>
+
+```
+
+**为什么我不像他们一样将`cookie`作为`asyncData`的参数层层传递？**
+
+首先明确一点，在`client`端发起异步请求是不需要显式地设置`cookie`，因为它会自动携带。
+
+只有`server`端**数据预取阶段**才需要手动设置`cookie`，而预取阶段发起的请求被声明在`actions`里，因此我们只需要在`dispatch`时将`cookie`挂到`axios`实例上即可。
+
+再一个原因就是，`	asyncData`不仅在`server`端调用，它也可以在`client`端的`beforeRouteUpdate`阶段被调用（参考示例工程的`/userlist`页面）。如果你显式的将`cookie`传给`asyncData`，那么你需要在**任何调用到`asyncData`的地方**，尽可能为它补充好参数。
+
+也就是说你要在`client`端编写大量类似下面的代码：
+
+```js
+// 用心体会
+asyncData({
+  store:this.$store,
+  route:this.$route,
+  cookie:document.cookie
+})
+```
+
+如果你不补充参数，或许会遭遇一个经典报错：`Uncaught TypeError: Cannot read properties of undefined`。
+
+综上所述，因为`asyncData`调用位置的不确定性，我们应该尽可能的避免给`asyncData`额外添加参数。
+
+### 基于环境的条件编译
+
+
 
 ## 总结
 
