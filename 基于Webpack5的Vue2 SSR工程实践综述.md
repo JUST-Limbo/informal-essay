@@ -854,6 +854,7 @@ entry: {
 还会影响到插件的配置路径，比如：
 
 ```js
+// build/webpack.spa.config.js
 new HtmlWebpackPlugin({
     // 注意两个路径的差异
     template: './public/index.spa.html',
@@ -1070,13 +1071,13 @@ export default {
 
 ```
 
-**为什么我不像他们一样将`cookie`作为`asyncData`的参数层层传递？**
+**这里讲讲我为什么没有将`cookie`作为`asyncData`的参数层层传递**
 
 首先明确一点，在`client`端发起异步请求是不需要显式地设置`cookie`，因为它会自动携带。
 
-只有`server`端**数据预取阶段**才需要手动设置`cookie`，而预取阶段发起的请求被声明在`actions`里，因此我们只需要在`dispatch`时将`cookie`挂到`axios`实例上即可。
+只有`server`端**数据预取阶段**才需要手动设置`cookie`，而预取阶段发起的请求被声明在`actions`里，因此我们只需要在`actions`中的函数被调用时将`cookie`挂到`axios`实例上即可。
 
-再一个原因就是，`	asyncData`不仅在`server`端调用，它也可以在`client`端的`beforeRouteUpdate`阶段被调用（参考示例工程的`/userlist`页面）。如果你显式的将`cookie`传给`asyncData`，那么你需要在**任何调用到`asyncData`的地方**，尽可能为它补充好参数。
+再一个原因就是，`asyncData`不仅在`server`端被调用，它也可以在`client`端的`beforeRouteUpdate`阶段被调用（参考示例工程的`/userlist`页面）。如果你显式的将`cookie`传给`asyncData`，那么你需要在**任何调用到`asyncData`的地方**，尽可能为它补充好参数。
 
 也就是说你要在`client`端编写大量类似下面的代码：
 
@@ -1091,11 +1092,29 @@ asyncData({
 
 如果你不补充参数，或许会遭遇一个经典报错：`Uncaught TypeError: Cannot read properties of undefined`。
 
-综上所述，因为`asyncData`调用位置的不确定性，我们应该尽可能的避免给`asyncData`额外添加参数。
+综上所述，因为`asyncData`调用位置的不确定性，我们应该尽可能避免给`asyncData`额外添加参数。
 
-### 基于环境的条件编译
+### 优雅的处理平台差异
+
+[编写通用代码 | Vue SSR 指南 (vuejs.org)](https://v2.ssr.vuejs.org/zh/guide/universal.html#服务器上的数据响应)提到：
+
+> 通用代码不可接受特定平台的 API，因此如果你的代码中，直接使用了像 `window` 或 `document`，这种仅浏览器可用的全局变量，则会在 Node.js 中执行时抛出错误，反之也是如此。
+
+当你试图在通用代码中访问特定平台的API，必须要通过一些hack的方式编写这段代码，才能使程序平稳地运行。
+
+下面介绍三种方式：
+
+#### resolve.alias
+
+在`SSR`工程中，`resolve.alias`可以用来兼容只能在某个平台运行的第三方包（比如一些埋点api只能在客户端运行），你可以通过定义“假”的变量导出来使代码在另一个平台运行不报错。
+
+#### process
+
+#### typeof window !=='undefined'
 
 
+
+不到万不得已，尽量不要通过使用`typeof window !=='undefined'`的方式进行平台判断。判断环境的条件代码越少，编写出来的代码可维护性越高。
 
 ## 总结
 
