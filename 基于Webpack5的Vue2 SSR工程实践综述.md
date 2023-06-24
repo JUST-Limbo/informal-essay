@@ -1094,7 +1094,7 @@ asyncData({
 
 综上所述，因为`asyncData`调用位置的不确定性，我们应该尽可能避免给`asyncData`额外添加参数。
 
-### 优雅的处理平台差异
+### 优雅地处理平台差异
 
 [编写通用代码 | Vue SSR 指南 (vuejs.org)](https://v2.ssr.vuejs.org/zh/guide/universal.html#服务器上的数据响应)提到：
 
