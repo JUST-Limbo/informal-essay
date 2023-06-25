@@ -206,12 +206,7 @@ const config = {
 		filename: isProd ? "js/[name].[contenthash:6].bundle.js" : "js/[name].bundle.js",
 		chunkFilename: isProd ? "js/chunk_[name]_[contenthash:6].js" : "js/chunk_[name].js"
 	},
-	cache: {
-		type: "filesystem",
-		buildDependencies: {
-			config: [__filename]
-		}
-	},
+	cache: !isProd,
 	resolve: {
 		extensions: [".js", ".vue", ".json", ".ts", ".html"],
 		alias: {
@@ -263,6 +258,21 @@ const config = {
 					},
 					{
 						test: /\.css$/i,
+						include: [/element-ui/],
+						use: [
+							MiniCssExtractPlugin.loader,
+							{
+								loader: "css-loader",
+								options: {
+									importLoaders: 1
+								}
+							},
+							"postcss-loader"
+						]
+					},
+					{
+						test: /\.css$/i,
+						exclude: [/element-ui/],
 						use: [
 							stylesHandler,
 							{
@@ -315,6 +325,11 @@ const clientConfig = {
 	entry: {
 		app: "./src/entry-client.js"
 	},
+	resolve: {
+		alias: {
+			axiosInstance: "@/utils/request-client.js"
+		}
+	},
 	plugins: [
 		new VueSSRClientPlugin(),
 		new WebpackBar({
@@ -343,6 +358,11 @@ module.exports = (env, args) => {
 			})
 		)
 	} else {
+		clientConfig.plugins.push(
+			new MiniCssExtractPlugin({
+				filename: "styles/[name].css"
+			})
+		)
 		clientConfig.devtool = "cheap-module-source-map"
 	}
 	return merge(base, clientConfig)
@@ -378,7 +398,7 @@ const serverConfig = {
 	output: {
 		filename: "server-bundle.js",
 		libraryTarget: "commonjs2",
-		clean: true // 在生成文件之前清空 output 目录
+		// clean: true // 在生成文件之前清空 output 目录
 	},
 	optimization: {
 		splitChunks: false
@@ -386,6 +406,11 @@ const serverConfig = {
 	externals: nodeExternals({
 		allowlist: [/\.css$/]
 	}),
+	resolve: {
+		alias: {
+			axiosInstance: "@/utils/request-server.js"
+		}
+	},
 	plugins: [
 		new VueSSRServerPlugin(),
 		new WebpackBar({
@@ -416,6 +441,9 @@ module.exports = (env, args) => {
 		const port = args.port || defaultPort
 		const LOCAL_IP = address.ip()
 		serverConfig.plugins.push(
+            new MiniCssExtractPlugin({
+				filename: "styles/[name].css"
+			}),
 			new FriendlyErrorsWebpackPlugin({
 				compilationSuccessInfo: {
 					messages: [`  App running at:`, `  - Local:   ` + chalk.cyan(`http://localhost:${port}`), `  - Network: ` + chalk.cyan(`http://${LOCAL_IP}:${port}`)]
@@ -568,6 +596,7 @@ const config = {
         alias: {
             '@': path.resolve(__dirname, '../src'),
             vue$: 'vue/dist/vue.esm.js',
+            axiosInstance: "@/utils/request-client.js"
         },
     },
     optimization: OptimizationMap[NODE_ENV],
@@ -1031,7 +1060,7 @@ export default {
 
 预取阶段，`asyncData`执行`store.dispatch("userStore/getUserInfo")`，会在`actions`中向`api`函数传入`cookie`，通过这样处理，我们就能实现预取阶段发起的异步请求也携带了鉴权信息。
 
-#### 注意
+#### 注意cookie的传参时机
 
 在查阅和参考资料的过程中发现，很多方案是将`cookie`作为实参传入到`asyncData`中，即：
 
@@ -1100,21 +1129,138 @@ asyncData({
 
 > 通用代码不可接受特定平台的 API，因此如果你的代码中，直接使用了像 `window` 或 `document`，这种仅浏览器可用的全局变量，则会在 Node.js 中执行时抛出错误，反之也是如此。
 
-当你试图在通用代码中访问特定平台的API，必须要通过一些hack的方式编写这段代码，才能使程序平稳地运行。
+当你试图在通用代码中访问特定平台的API，必须要通过一些hack方式编写这段代码，才能使程序平稳地运行。
 
 下面介绍三种方式：
 
 #### resolve.alias
 
-在`SSR`工程中，`resolve.alias`可以用来兼容只能在某个平台运行的第三方包（比如一些埋点api只能在客户端运行），你可以通过定义“假”的变量导出来使代码在另一个平台运行不报错。
+```js
+// webpack.server.config.js
+resolve: {
+  alias: {
+    titleMixin:"@/utils/title-server.js"
+  }
+}
+// webpack.client.config.js
+resolve: {
+  alias: {
+    titleMixin:"@/utils/title-client.js"
+  }
+}
+// title-client.js
+function getTitle(vm) {
+	const { title } = vm.$options
+	if (title) {
+		return typeof title === "function" ? title.call(vm) : title
+	}
+}
 
-#### process
+const clientTitleMixin = {
+	mounted() {
+		const title = getTitle(this)
+		if (title) {
+			document.title = ` ${title}`
+		}
+	}
+}
+
+export default clientTitleMixin
+// title-server.js
+function getTitle(vm) {
+	const { title } = vm.$options
+	if (title) {
+		return typeof title === "function" ? title.call(vm) : title
+	}
+}
+
+const serverTitleMixin = {
+	created() {
+		const title = getTitle(this)
+		if (title) {
+			this.$ssrContext.title = title
+		}
+	}
+}
+
+export default serverTitleMixin
+
+```
+
+在`SSR`工程中，`resolve.alias`也可以用来兼容只能在某个平台运行的第三方包（比如一些埋点api只能在客户端运行），你可以通过定义“假”的变量导出来使代码在另一个平台运行不报错。
+
+#### process.env
+
+```js
+// app.js
+import titleMixin from "@/utils/title"
+Vue.mixin(titleMixin)
+// utils/index.js
+export const atClient = process.env.atClient == "true"
+export const atServer = process.env.atServer == "true"
+// utils/title.js
+import { atServer } from "./index.js"
+function getTitle(vm) {
+	const { title } = vm.$options
+	if (title) {
+		return typeof title === "function" ? title.call(vm) : title
+	}
+}
+const serverTitleMixin = {
+	created() {
+		const title = getTitle(this)
+		if (title) {
+			this.$ssrContext.title = title
+		}
+	}
+}
+const clientTitleMixin = {
+	mounted() {
+		const title = getTitle(this)
+		if (title) {
+			document.title = ` ${title}`
+		}
+	}
+}
+export default atServer ? serverTitleMixin : clientTitleMixin
+
+```
 
 #### typeof window !=='undefined'
 
+```js
+function getTitle(vm) {
+	const { title } = vm.$options
+	if (title) {
+		return typeof title === "function" ? title.call(vm) : title
+	}
+}
 
+export const titleMixin = (function () {
+	if (typeof window !== "undefined") {
+		return {
+			mounted() {
+				const title = getTitle(this)
+				if (title) {
+					document.title = `Vue HN 2.0 | ${title}`
+				}
+			}
+		}
+	} else {
+		return {
+			created() {
+				const title = getTitle(this)
+				if (title) {
+					this.$ssrContext.title = `Vue HN 2.0 | ${title}`
+				}
+			}
+		}
+	}
+})()
 
-不到万不得已，尽量不要在业务中直接使用`if`条件判断的方式进行平台区分。判断环境的条件代码越少，编写出来的代码可维护性越高。
+```
+
+不到万不得已不要在业务中直接使用`if`条件判断的方式进行平台区分。直接判断平台的条件代码越少，编写出来的代码可维护性越高。
 
 ## 总结
 
