@@ -6,7 +6,9 @@
 
 相关仓库地址：
 
-[代码仓库](https://github.com/JUST-Limbo/vue2-ssr-practice)
+[前端代码仓库](https://github.com/JUST-Limbo/vue2-ssr-practice)
+
+[接口代码仓库](https://github.com/JUST-Limbo/mock-backend)
 
 [文章所在仓库](https://github.com/JUST-Limbo/informal-essay)
 
@@ -1274,6 +1276,6 @@ export const titleMixin = (function () {
 
 [What to do when Vue hydration fails | blog.Lichter.io](https://blog.lichter.io/posts/vue-hydration-error/)
 
-[概念 | webpack 中文文档 (docschina.org)](https://webpack.docschina.org/concepts/)
+[webpack (docschina.org)](https://webpack.docschina.org/)
 
 [Vue.js 服务器端渲染指南 | Vue SSR 指南 (vuejs.org)](https://v2.ssr.vuejs.org/zh/)
