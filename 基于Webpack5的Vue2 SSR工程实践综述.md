@@ -928,7 +928,7 @@ new Dotenv({
 
 答案：没有自动携带。
 
-为了处理这种问题，我们需要：
+为了实现在`server`端携带`client`端的`cookie`，我们需要：
 
 1. `server`端收到浏览器的访问请求，将`req`对象中的`cookie`保存
 2. 将`cookie`传入到`store`中
