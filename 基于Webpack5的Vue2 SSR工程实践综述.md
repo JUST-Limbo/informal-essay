@@ -1136,6 +1136,8 @@ asyncData({
 #### resolve.alias
 
 ```js
+// app.js
+import titleMixin from "titleMixin"
 // webpack.server.config.js
 resolve: {
   alias: {
