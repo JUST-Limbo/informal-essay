@@ -1279,3 +1279,5 @@ export const titleMixin = (function () {
 [webpack (docschina.org)](https://webpack.docschina.org/)
 
 [Vue.js 服务器端渲染指南 | Vue SSR 指南 (vuejs.org)](https://v2.ssr.vuejs.org/zh/)
+
+[VueSSR高阶指南 - 掘金 (juejin.cn)](https://juejin.cn/post/6844903669922529287)
