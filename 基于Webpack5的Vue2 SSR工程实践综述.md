@@ -22,7 +22,7 @@
 
 目前常见的技术论坛中关于`Vue2`的`SSR`文章，主要是以`vue/cli@3`和`vue/cli@4`为基础创建的工程。
 
-[示例仓库](https://github.com/JUST-Limbo/vue2-ssr-practice)主要是在[HackerNews Demo](https://github.com/vuejs/vue-hackernews-2.0)的基础上，脱离`vue/cli`，将其`webpack3`的依赖升级到`webpack5`，消除一些旧版本依赖包存在的问题（比如`node-sass`），给出`SPA`和`SSR`的`webpack`配置。
+[示例仓库](https://github.com/JUST-Limbo/vue2-ssr-practice)主要是在[HackerNews Demo](https://github.com/vuejs/vue-hackernews-2.0)的基础上，脱离`vue/cli`，将其`webpack3`的依赖升级到`webpack5`，消除一些旧版本依赖包存在的问题（比如`node-sass`），给出`CSR`和`SSR`的`webpack`配置。
 
 本文的主要内容是介绍示例仓库中的`webpack`配置，侧重介绍`SSR`开发模式的构建配置思路。
 
@@ -72,15 +72,15 @@ npx webpack init
 
 如果你仅仅是配置了`mode: 'history'`，没有进行其他配置，那么你将会遭遇：
 
-1. spa应用开发场景下**通过命令式导航跳转**的方式能进入`http://localhost:9800/xxx`
-2. spa应用开发场景下**直接输入**链接访问`http://localhost:9800/xxx`，页面返回`Cannot GET /xxx`
+1. `CSR`应用开发场景下**通过命令式导航跳转**的方式能进入`http://localhost:9800/xxx`
+2. `CSR`应用开发场景下**直接输入**链接访问`http://localhost:9800/xxx`，页面返回`Cannot GET /xxx`
 3. 在`nginx`部署生产完成后直接访问`http://xxx.com/xxx`会返回404
 
 上述问题本质上是同一个问题：当访问`http://localhost:9800/xxx`时，浏览器会尝试访问`http://localhost:9800`静态服务器中`/xxx`目录下的`index.html`。
 
 而观察过构建目录`dist`的开发者都知道，不做特殊处理的情况下`dist`中不会构建出`/xxx`，这也是为什么返回404的原因，即：`/xxx/index.html`根本不存在。
 
-本文只介绍`webpack`解决该问题的办法（注意这是针对`SPA`应用开发环境），至于`nginx`的解决方案建议咨询所在公司运维人员。
+本文只介绍`webpack`解决该问题的办法（注意这是针对`CSR`应用开发环境），至于`nginx`的解决方案建议咨询所在公司运维人员。
 
 解决思路是：将所有请求转发到`http://localhost:9800/index.html`
 
@@ -101,9 +101,9 @@ devServer: {
 
 对于`devServer.historyApiFallback`配置，更多了解请点击[DevServer | webpack 中文文档 (docschina.org)](https://webpack.docschina.org/configuration/dev-server/#devserverhistoryapifallback)
 
-**本文聊的是`SSR`，为什么要花篇幅描述`SPA`下的`history`处理呢？**
+**本文聊的是`SSR`，为什么要花篇幅描述`CSR`下的`history`处理呢？**
 
-因为`SSR`的容灾降级需要用到`SPA`。
+因为`SSR`的容灾降级需要用到`CSR`。
 
 ### webpack.base.config.js
 
