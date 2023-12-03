@@ -10,19 +10,41 @@
 
 ## 摘要
 
-··
-
 ## 背景
 
-今年年中那会儿，有次面上海中软招商银行外包（说是要降薪所以压根没打算去，但还是约了线上随便聊一下），整体流程没有啥压力，唯独过程中面到所在公司代码风格是怎么统一的，这题答的感觉不是太好。
+之前面试被问到了，从对面的反应来看答得似乎不是很好，**于是有了这篇文章。**
 
-我当时原话：我知道正常的风格约束方案，`prettier`和`eslint`是应该装依赖和`VSCode`插件，然后配置对应`.rc`文件来控制队伍的代码风格的。**但是我司走的是野路子**，我司就用了`.rc`文件还有装了插件，其他的一些规则什么的都通过用同一份`setting.json`来控制。你要说标不标准那确实不标准，但是你就说方不方便，能不能用吧。
 
-答完之后对面笑了，不知道是因为我太耿直还是笑我司的方案太挫了，因为我司的方案我自己都感觉确实挫的要死。
 
-总之这件事引起了哥们的逆反心理，同时为了避免未来再面到这个问题答得不好。
+## settings.json
 
-**于是有了这篇文章。**
+```text
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+  },
+  "eslint.validate": ["typescript", "javascript", "vue"]
+}
+```
+
+`editor.formatOnSave`
+
+在保存时格式化文件
+
+`editor.formatOnSaveMode`
+
+控制在保存时设置格式是设置整个文件格式还是仅设置修改内容的格式。仅当 "#editor.formatOnSave#" 处于启用状态时适用。
+
+`editor.codeActionsOnSave`
+
+`"editor.formatOnSave": true,`这个配置项主要就是用来做样式的格式化，而`"editor.codeActionsOnSave"`不仅局限于样式的格式化，还会做代码检查等其它工作。
+
+[一文了解VsCode、Eslint、Prettier、Husky相关配置 - 掘金 (juejin.cn)](https://juejin.cn/post/7169889743486844965)
+
+`eslint.validate`
+
+An array of language ids which should be validated by ESLint.
 
 ## prettier和ESLint的区别
 
@@ -32,12 +54,48 @@
 
 ## vscode
 
-prettier:require config
+`prettier:require config`
 
 prettier配置文件必须存在
 
+## eslint
 
+```bash
+npm i eslint
+```
+
+初始化eslintrc文件
+
+```
+npx eslint --init
+```
+
+## eslint-plugin-prettier 和 eslint-config-prettier
+
+
+
+## prettier
+
+格式化优先级
+
+prettier.rc > editorconfig > settings.json
+
+[API · Prettier](https://prettier.io/docs/en/api.html#prettierresolveconfigfileurlorpath--options)
+
+[Configuration File · Prettier](https://prettier.io/docs/en/configuration#editorconfig)
+
+
+
+假设现在有一个Vue项目，并没有配置Eslint, Prettier和EditorConfig，那我们该如何实现代码规范呢？
+
+https://juejin.cn/post/7114162786137358372
 
 ## 一些prettier规则
 
 `bracketSameLine`
+
+
+
+参考
+
+https://juejin.cn/post/6971783776221265927
