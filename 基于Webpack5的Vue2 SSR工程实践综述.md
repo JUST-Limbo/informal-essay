@@ -32,7 +32,7 @@
 
 | name    | version | note                                                         |
 | ------- | ------- | ------------------------------------------------------------ |
-| nvm     | 1.1.9   | node版本控制器，用来切换node版本，不多说                     |
+| nvm     | 1.1.9   | node版本控制器                                               |
 | node.js | 16.20.0 | webpack5最低支持node10.13，pnpm最低支持node16.14，这里选择16.20.0，不多说 |
 | pnpm    | 8.6.1   | 包管理工具，用过都说好，不多说                               |
 | vue     | 2.6     | vue的版本直接影响`vue-loader vue-template-compiler vue-server-renderer`</br>2.7以后支持组合式 API<br/>这里保守起见，采用2.6下最后一个patch版本（当前是2.6.14） |
@@ -1299,3 +1299,13 @@ export const titleMixin = (function () {
 [Vue.js 服务器端渲染指南 | Vue SSR 指南 (vuejs.org)](https://v2.ssr.vuejs.org/zh/)
 
 [VueSSR高阶指南 - 掘金 (juejin.cn)](https://juejin.cn/post/6844903669922529287)
+
+[SSR 项目的 Service Worker 最佳实践_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1mt411q79H)
+
+[在 Vue SSR 中使用 Service Worker - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/31630322)
+
+[SSR 架构项目实现离线可用（思路&案例） - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/30791448)
+
+[pwa-lesson-demo/phase-2/lesson-4-ssr-service-worker at master · lavas-project/pwa-lesson-demo (github.com)](https://github.com/lavas-project/pwa-lesson-demo/tree/master/phase-2/lesson-4-ssr-service-worker)
+
+[谨慎处理 Service Worker 的更新 - 掘金 (juejin.cn)](https://juejin.cn/post/6844903792522035208)
