@@ -4,7 +4,7 @@
 
 如文中提到的部分内容出现*break change*或出现内容错误（文字错误/错误的理论描述），为尽可能避免对后面的读者造成困扰，如果可以的话，希望在文章的评论区或代码仓库issues中予以指正，十分感谢。
 
-文章代码所在仓库：https://github.com/JUST-Limbo/vue3-gpt-practice
+文章代码所在仓库：<https://github.com/JUST-Limbo/vue3-gpt-practice>
 
 **注意：因为是前端演示项目，所以这个仓库的对话数据是mock的，如果想要接入OpenAI这种大模型，你需要自行调整接口**
 
@@ -12,10 +12,10 @@
 
 本文主要介绍了`GPT`打字机效果的前端实现思路。
 
-在参考完~~（抄别人作业）~~目前的资料我总结了一下，打字机光标效果的实现思路主要有两种：
+在参考完~~抄别人作业~~目前的资料我总结了一下，打字机光标效果的实现思路主要有两种：
 
-+ 递归查找当前`DOM`树中的最后一个节点内容不为空的文本叶子节点，然后追加一个闪烁的光标`DOM`
-+ 依赖`CSS`选择器，通过`:last-child:after`子代选择器和伪类选择器锁定位置，其实也是递归查最后一个非空叶子节点。
+*   递归查找当前`DOM`树中的最后一个节点内容不为空的文本叶子节点，然后追加一个闪烁的光标`DOM`
+*   依赖`CSS`选择器，通过`:last-child:after`子代选择器和伪类选择器锁定位置，其实也是递归查最后一个非空叶子节点。
 
 **总之就是要找到最后一个非空叶子节点，然后在那个节点位置想办法把光标的效果摇出来。**
 
@@ -23,7 +23,7 @@
 
 ## 效果预览
 
-![GIF](assets/基于Vue3的ChatGPT打字机前端实现（附代码））.assets/GIF.gif)
+![GIF.gif](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/cfb56572126f419e827aed068b39aa31~tplv-k3u1fbpfcp-jj-mark:0:0:0:0:q75.image#?w=1022&h=842&s=374836&e=gif&f=232&b=f5f5f5)
 
 ## 队列思路概述
 
@@ -33,20 +33,20 @@
 
 为了使代码更紧凑，我们采用`ES6 class`的方式通过以下思路组织代码：
 
-1. 声明一个`Pipe`类作为功能体的集合
+1.  声明一个`Pipe`类作为功能体的集合
 
-2. 声明一个静态属性`str`来保存需要渲染的字符串内容
+2.  声明一个静态属性`str`来保存需要渲染的字符串内容
 
-   + 声明一个`write`静态方法来填充`str`，即队列入队
-   + 声明一个`pop`静态方法来删除`str`靠前的内容，即队列出队
+    *   声明一个`write`静态方法来填充`str`，即队列入队
+    *   声明一个`pop`静态方法来删除`str`靠前的内容，即队列出队
 
-3. 声明一个`start`静态方法启动渲染行为
+3.  声明一个`start`静态方法启动渲染行为
 
-   通过定时器尾递归执行渲染和出队行为，即修改`ref`对象来渲染视图层（`consume`）和弹出`str`队头元素（`pop`）
+    通过定时器尾递归执行渲染和出队行为，即修改`ref`对象来渲染视图层（`consume`）和弹出`str`队头元素（`pop`）
 
-4. 声明一个`consumeAll`，一次性消耗掉队列中剩下的元素
+4.  声明一个`consumeAll`，一次性消耗掉队列中剩下的元素
 
-   当`GPT`回答结束，意味着当前队列不会再有入队的元素，但是队列可能没渲染完，这种情况继续用定时器渲染一点一点是没有必要的，应该一次性把剩余所有元素都渲染到视图层上然后清空队列。
+    当`GPT`回答结束，意味着当前队列不会再有入队的元素，但是队列可能没渲染完，这种情况继续用定时器渲染一点一点是没有必要的，应该一次性把剩余所有元素都渲染到视图层上然后清空队列。
 
 代码实现如下：
 
@@ -183,6 +183,7 @@ onBeforeUnmount(() => {
 这种方式也能应对大多数的场景，有个小问题是子代选择器没有什么特别全面的办法锁定最后一个非空叶子结点（如果某个场景出问题就要接着写样式去覆盖那个场景，纯纯的手动挡懂我意思吧？），而且会被换行符之类的东西影响。
 
 ```scss
+// styles/highlight.scss
 @mixin FlashingCursor {
   animation: blink 1s steps(5, start) infinite;
   content: '▋';
@@ -229,5 +230,7 @@ onBeforeUnmount(() => {
 ## 参考资料·鸣谢
 
 + [ChatGPTNextWeb](https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web)
++ [markdown-it](https://github.com/markdown-it/markdown-it)
 + [highlight.js (highlightjs.org)](https://highlightjs.org/)
 + [highlight.js中文网 (fenxianglu.cn)](https://fenxianglu.cn/highlight.html)
++ https://juejin.cn/post/7237426124669157433
