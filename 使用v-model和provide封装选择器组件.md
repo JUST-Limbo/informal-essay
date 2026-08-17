@@ -10,12 +10,12 @@
 
 ## 概述
 
-在工作过程中发现，一部分前端开发人员在开发时，对于具有选择器特征的业务功能写出的代码从可读性的角度来讲不是很契合 Vue2 这个框架。
+在业务开发中，选择地址、商品或标签之类的需求很常见。如果直接在页面里维护选中状态，代码虽然能跑，但往往没有充分利用 Vue 2 的组件机制，后续也不容易复用。
 
-本文通过一段简单的案例代码为切入来简述：
+本文从一个简单示例出发，讨论两个问题：
 
-- 如何通过`v-model`来改善选择器组件代码
-- 如何通过`provide inject`封装通用选择器组件
+- 如何用 `v-model` 简化选择器组件的状态传递
+- 如何用 `provide/inject` 拆分选择容器和选项组件
 
 ## 案例代码和解析
 
@@ -96,11 +96,11 @@ export default {
 </style>
 ```
 
-这段代码最大的问题是`.item`元素视图层的激活状态`.active`类依赖于对象数组`tableData`中对象元素的`selected`属性。在业务开发中，`tableData`的数据是通过调接口请求而来，因此很大概率前端拿到的数据中并没有`selected`属性。
+这段代码的问题在于，`.item` 的激活状态依赖 `tableData` 中每一项的 `selected` 属性。实际项目里的 `tableData` 通常来自接口，而接口数据未必包含这个字段。
 
-因此这个案例中，仅仅为了维护视图层状态就对源数据随意地新增一个属性是不合理的，且有更简洁的应对策略。
+如果只是为了控制选中样式，就没有必要修改每一项数据。当前选中的 ID 已经保存在 `selectId` 中，直接用它判断即可。
 
-**可以对案例代码进行以下修改：**
+代码可以改成这样：
 
 ```vue
 <template>
@@ -136,22 +136,22 @@ export default {
 </style>
 ```
 
-上述代码中第 9 行，激活态`.active`类的生效条件由原来的`item.selected`改为`selectId == item.id`，同时`selectAddress`函数中也不再对数组元素的`selected`属性进行赋值操作。
+现在，`.active` 直接由 `selectId == item.id` 决定，`selectAddress` 只负责更新 `selectId`，不再改动 `tableData`。
 
 ## 支持 v-model 的选择器组件
 
-实际上这类选择器的功能，无非是单选多选，也可以参考 Vue 对`input、radio`等表单控件的处理策略，通过使用自定义组件的`v-model`改善选择器组件代码。
+这类组件本质上是在维护一个单选值或一组多选值，可以参考 Vue 处理表单控件的方式，用自定义组件的 `v-model` 对外传递选中结果。
 
-> 自定义组件想要使用 v-model 需要进行一些非常简单的配置，如不知道如何配置，那么可以参考以下资料：
+> 如果不熟悉 Vue 2 自定义组件的 `v-model`，可以先看以下资料：
 >
 > - [API — Vue.js (vuejs.org)](https://v2.cn.vuejs.org/v2/api/#model)
 > - [自定义事件 — Vue.js (vuejs.org)](https://v2.cn.vuejs.org/v2/guide/components-custom-events.html#自定义组件的-v-model)
 
-**可以对案例代码进行以下修改：**
+接下来把前面的代码拆成页面组件和 `AddressSelect` 组件。
 
-_index.vue_
+### `index.vue`
 
-注意第 4 行的代码变化
+页面只保留数据和选中结果，通过 `v-model` 接收 `AddressSelect` 的值：
 
 ```vue
 <template>
@@ -196,9 +196,9 @@ export default {
 </script>
 ```
 
-_AddressSelect.vue_
+### `AddressSelect.vue`
 
-注意关于`.active`类的处理、`model`配置项的声明和`selectAddress`方法的实现。
+组件内部需要处理三件事：声明 `model` 配置、根据 `value` 判断激活状态，以及在点击后触发约定的事件。
 
 ```vue
 <template>
@@ -220,7 +220,7 @@ _AddressSelect.vue_
 <script>
 export default {
   name: "AddressSelect",
-  // 外层传入的v-model="selectedId",selectedId的值在组件内会指向prop value
+  // 外层使用 v-model="selectedId" 时，selectedId 会作为 value 传入组件
   model: {
     prop: "value",
     event: "select",
@@ -231,7 +231,7 @@ export default {
   },
   methods: {
     selectAddress(item) {
-      // 执行这行代码,将会修改外层的selectedId,值为传入的item.id
+      // 触发 select 事件后，外层的 selectedId 会更新为 item.id
       this.$emit("select", item.id);
     },
   },
@@ -255,25 +255,26 @@ export default {
 </style>
 ```
 
-## 通过 provide inject 将选择容器与具体的列表项内容分离
+## 用 provide/inject 拆分选择容器和选项
 
-随着业务的增长，开发人员会遇到越来越多的选择器功能需求，不可避免的会出现以下问题：
+如果项目里有多种选择器，继续为每个业务场景单独写一个组件，通常会遇到这些问题：
 
-1. 每个选择器自定义组件都要重复写一次支持自定义`v-model`的配置是不合理的
-2. 如果一个选择器支持单选和多选，则每次开发组件都要重复实现一次选择的逻辑是不合理的
-3. 如果选择器列表项内容相同，但是在不同场景下布局不同（列表的布局可能是横向/纵向排列，弹出层等），则需要根据场景做不同的处理，长期的场景堆积会造成组件难以维护
+1. 每个组件都要重复配置 `v-model`。
+2. 单选、多选的状态更新逻辑会反复出现。
+3. 选项内容相同，但横向排列、纵向排列或弹出层等布局不同。把这些场景都塞进一个业务组件后，维护成本会逐渐增加。
 
-为了应对以上问题，可以参考`el-select`的思路，**将选择器的容器与具体的列表项内容分离**，即：
+可以参考 `el-select` 的组件结构，把选择逻辑和选项内容拆开：
 
-给出一个专门容纳列表项内容的**容器组件**`Selector`，其作用是保存最终的选择结果、承载单选多选场景，同时暴露出一个`customClass`属性来从`Selector`容器外对列表布局进行控制。
+- `Selector` 负责接收选中值，处理单选和多选逻辑，并通过 `customClass` 开放布局样式。
+- `SelectOption` 负责渲染具体内容，并把点击行为交给 `Selector` 处理。
 
-这样在开发选择器功能时，**只需要关注列表项内容组件的代码开发即可**。
+两者通过 `provide/inject` 建立联系。新增业务选择器时，通常只需要实现选项的内容和样式。
 
-下面给出简明代码（不完善，仅作为描述思路）：
+下面的代码用于说明整体思路，省略了类型校验、禁用状态等生产环境中可能需要的细节。
 
-_index.vue_
+### `index.vue`
 
-注意`Selector`和`SelectOption`两个组件的层级
+`SelectOption1` 和 `SelectOption2` 都放在 `Selector` 内部，但可以使用不同的内容和布局：
 
 ```vue
 <template>
@@ -350,9 +351,9 @@ export default {
 </style>
 ```
 
-_Selector.vue_
+### `Selector.vue`
 
-注意`provide`、`onOptionSelect`
+`Selector` 通过 `provide` 暴露自身。选项组件注入该实例后，就可以读取选中状态并调用统一的选择方法。
 
 ```vue
 <template>
@@ -412,9 +413,9 @@ export default {
 </script>
 ```
 
-_SelectOption1.vue_
+### `SelectOption1.vue`
 
-注意`active`计算属性
+`active` 由 `Selector` 统一计算，点击时再把当前选项的值交回 `Selector`：
 
 ```vue
 <template>
@@ -469,9 +470,9 @@ export default {
 </style>
 ```
 
-_SelectOption2.vue_
+### `SelectOption2.vue`
 
-大部分代码同`SelectOption1.vue`，样式略有不同
+它与 `SelectOption1.vue` 的交互逻辑相同，只调整展示内容或样式：
 
 ```vue
 <template>
@@ -526,7 +527,7 @@ export default {
 
 ## 版本差异
 
-在`vue@'<2.6'`的版本中，`v-model`与`v-bind="$attrs" v-on="$listeners"`的写法会导致`value`属性丢失。
+在低于 2.6 的 Vue 版本中，同时使用 `v-model`、`v-bind="$attrs"` 和 `v-on="$listeners"` 时，可能出现 `value` 属性无法传递的问题。
 
 详见：
 
@@ -538,12 +539,8 @@ export default {
 
 ## 结语
 
-综上所述，在开发过程中，应该尽量避免松散地将选择器功能实现在页面这一层代码中。
+选择器逻辑直接写在页面里并非一定错误。场景简单、没有复用需求时，这样写反而更直接。但当单选、多选和多种布局反复出现后，就值得把选中状态和交互逻辑收进组件。
 
-从代码可读性和可维护性的角度来讲， 此类不直接影响业务的纯功能性代码都应该集中到一个组件里，同时暴露出`v-model`实现与父级组件数据双向通讯。
+通过 `v-model`，父组件只需要关心选中结果；通过 `provide/inject`，容器组件可以统一处理选择逻辑，选项组件则专注于内容和样式。
 
-此外，在面对具有复杂布局的选择器功能时，考虑将选择器的列表容器和列表选项各自独立，或许能改善代码的可维护性。
-
-## 参考资料链接
-
-（待补充）
+这种拆分会增加组件之间的隐式依赖，因此不必套用到所有场景。是否采用，还是要看选择逻辑的复用程度和布局复杂度。
